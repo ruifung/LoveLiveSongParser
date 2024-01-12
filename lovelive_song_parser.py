@@ -56,7 +56,7 @@ class LLSongs:
         result = bs(result['parse']['text']['*'], 'html.parser')
         if 'Redirect to' in str(result):
             return await self.__parse_song(result.find('a').attrs['href'][6:], group, session)
-        for source in result.find_all('source'):
+        for source in result.find_all('audio'):
             song_result = [
                         parse.unquote(source.attrs['src'].split('/')[-3].replace('_', ' ')),
                         '/'.join(source.attrs['src'].split('/')[:-2])
@@ -83,8 +83,15 @@ class LLSongs:
                     pass
         await asyncio.wait(tasks)
 
+    def __sanitize_filename(self, filename: str):
+        if sys.platform == 'win32':
+            filename = re.sub(r'[\\/*?:"<>|]', " ", filename)
+            filename = filename.strip()
+        return filename
+
+
     async def __download_song(self, song_info, group: str, session):
-        song_path = os.path.join('Songs', group, song_info[0])
+        song_path = os.path.join('Songs', group, self.__sanitize_filename(song_info[0]))
         try:
             with open(song_path, 'wb') as f:
                 async with session.get(song_info[1]) as resp:
@@ -144,7 +151,7 @@ class LLSongs:
                 else:
                     uniq_links.add(i[1])
                     for v in self.__songs_list:
-                        if os.path.exists(os.path.join('Songs', v, i[0])):
+                        if os.path.exists(os.path.join('Songs', v, self.__sanitize_filename(i[0]))):
                             already_downloaded += 1
                             is_uniq = False
                             break
